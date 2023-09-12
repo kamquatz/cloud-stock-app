@@ -1,0 +1,147 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+	<title>Matrix Stock App</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes" />
+	<link rel="stylesheet" href="assets/css/main.css" />
+	<noscript>
+		<link rel="stylesheet" href="assets/css/noscript.css" />
+	</noscript>
+</head>
+
+<body class="is-preload landing">
+	<div id="page-wrapper">
+
+		<!-- Header -->
+		<header id="header">
+			<h1 id="logo"><a href="#">Matrix Stock App</a></h1>
+			<nav id="nav">
+				<ul>
+					<li><a href="index.html">Home</a></li>
+					<li><a href="stock-take.html">Stock Take</a>
+						<ul>
+							<li><a href="stock-report.html">Stock Report</a></li>
+						</ul>
+					</li>
+					<li><a href="products.html">Products List</a></li>
+				</ul>
+			</nav>
+		</header>
+
+		<!-- One -->
+		<section id="one" class="spotlight style1 bottom">
+			<div class="content">
+				<div class="container">
+					<div class="row">
+						<div class="col-4 col-12-medium">
+							<h2>Stock Report <input type="date" id="stockDate" name="stockDate" onchange="populate()" />
+							</h2>
+							<table class="alt" id="table">
+
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Footer -->
+		<footer id="footer">
+			<ul class="icons">
+				<li><a href="#" class="icon brands alt fa-twitter"><span class="label">Twitter</span></a></li>
+				<li><a href="#" class="icon brands alt fa-facebook-f"><span class="label">Facebook</span></a></li>
+				<li><a href="#" class="icon brands alt fa-linkedin-in"><span class="label">LinkedIn</span></a></li>
+				<li><a href="#" class="icon brands alt fa-instagram"><span class="label">Instagram</span></a></li>
+				<li><a href="#" class="icon brands alt fa-github"><span class="label">GitHub</span></a></li>
+				<li><a href="#" class="icon solid alt fa-envelope"><span class="label">Email</span></a></li>
+			</ul>
+			<ul class="copyright">
+				<li>&copy; Matrix Stock App. All rights reserved.</li>
+				<li>Design: <a href="http://matrixsys.co.ke">Matrix Systems</a></li>
+			</ul>
+		</footer>
+
+	</div>
+
+	<!-- Scripts -->
+	<script src="assets/js/jquery.min.js"></script>
+	<script src="assets/js/jquery.scrolly.min.js"></script>
+	<script src="assets/js/jquery.dropotron.min.js"></script>
+	<script src="assets/js/jquery.scrollex.min.js"></script>
+	<script src="assets/js/browser.min.js"></script>
+	<script src="assets/js/breakpoints.min.js"></script>
+	<script src="assets/js/util.js"></script>
+	<script src="assets/js/main.js"></script>
+	<script src="assets/js/custom/db.js"></script>
+	<script>
+		// Get the current date in the format YYYY-MM-DD (e.g., "2023-09-12").
+		stockDate = new Date().toISOString().split('T')[0];
+
+
+		$(document).ready(function () {
+			// Set the default value of the date input to today's date.
+			$("#stockDate").val(stockDate);
+			$('#stockDate').attr('max', stockDate);
+
+			populate();
+
+		});
+
+		async function populate() {
+			stockDate =  new Date($("#stockDate").val()).toISOString().split('T')[0];
+
+			var tbody = '<tbody><tr><th>Item</th><th>Opening</th><th>Closing</th><th>Sold</th><th>@</th><th>Amt</th></tr>';
+			totalAmt = 0;
+
+			try {
+				const db = await openDatabase('matrixStockApp', 1, 'stock');
+
+				const allItems = await getAllItems(db, 'stock');
+
+				allItems.forEach(item => {
+					const currentDate = new Date($("#stockDate").val());
+					currentDate.setDate(currentDate.getDate() + 1);
+					const tomorrowDate = currentDate.toISOString().split('T')[0];
+
+					const todayStock = item[stockDate];
+					const tomorrowStock = item[tomorrowDate];
+					const opening = todayStock ? todayStock.opening + todayStock.additions : 0;
+					const closing = tomorrowStock ? tomorrowStock.opening : 0;
+					const sold = opening - closing;
+
+					if (sold !== 0) {
+						amt_ = sold * item.sp;
+
+						const amt = amt_ > 0 ? amt_ : 0;
+						totalAmt += amt;
+
+						row = '<tr style="background-color: ' + (amt_ < 0 ? 'red' : '') + '">'
+							+ '<td id="nam_' + item.id + '">' + item.name + '</td>'
+							+ '<td id="yes_' + item.id + '">' + opening + '</td>'
+							+ '<td><b id="tot_' + item.id + '">' + closing + '</b></td>'
+							+ '<td><b id="tot_' + item.id + '">' + sold + '</b></td>'
+							+ '<td id="yes_' + item.id + '">' + item.sp.toLocaleString() + '</td>'
+							+ '<td id="yes_' + item.id + '">' + amt.toLocaleString() + '</td>'
+							+ '</tr>';
+						tbody += row;
+					}
+				});
+
+
+
+			} catch (error) {
+				console.error('Error:', error);
+			}
+
+			tbody += '<tr><th colspan="5">Total Sales<th>' + totalAmt.toLocaleString() + '</th></tr></tbody>'
+
+			$('#table').html(tbody);
+
+		}
+
+	</script>
+</body>
+
+</html>
