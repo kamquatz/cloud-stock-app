@@ -25,10 +25,10 @@
 							<li><a href="stock-report.html">Stock Report</a></li>
 						</ul>
 					</li>
-					<li><a href="products.html">Products List</a></li>									
-					<li><a href="reports.html">Reports</a>
+					<li><a href="products.html">Products List</a></li>				
+					<li class="active"><a href="reports.html">Reports</a>
 						<ul>
-							<li><a href="stock-report.html">Stock Report</a></li>
+							<li class="active"><a href="stock-report.html">Stock Report</a></li>
 							<li><a href="profit-loss-report.html">Profit/Loss Report</a></li>
 						</ul>
 					</li>
@@ -42,13 +42,11 @@
 				<div class="container">
 					<div class="row">
 						<div class="col-12 col-12-medium">
-							<h2>Products List
+							<h2>Profit/Loss Report <input type="date" id="stockDate" name="stockDate" onchange="populate()" />
 							</h2>
 							<table class="alt" id="table" style="font-size: small;">
 
 							</table>
-							<a href="#" class="button icon solid fa-download fit small" onclick="addProduct()">Add New
-								Product</a>
 						</div>
 					</div>
 				</div>
@@ -85,61 +83,54 @@
 	<script src="assets/js/custom/db.js"></script>
 	<script>
 		// Get the current date in the format YYYY-MM-DD (e.g., "2023-09-12").
-		const stockDate = new Date().toISOString().split('T')[0];
+		stockDate = new Date().toISOString().split('T')[0];
+
+
 		$(document).ready(function () {
+			// Set the default value of the date input to today's date.
+			$("#stockDate").val(stockDate);
+			$('#stockDate').attr('max', stockDate);
+
 			populate();
+
 		});
 
-		async function addProduct() {
-			const db = await openDatabase('matrixStockApp', 1, 'stock');
-
-			const item = {
-				name: '',
-				bp: '',
-				sp: ''
-			};
-			await addItem(db, 'stock', item);
-
-			populate();
-		}
-
-		async function updateProduct(id) {
-			// Retrieve values and handle potential errors
-			var name = $('#nam_' + id).val().toUpperCase() || '';
-			var bp = parseFloat($('#bp_' + id).val()) || 0;
-			var sp = parseFloat($('#sp_' + id).val()) || 0;
-
-			const db = await openDatabase('matrixStockApp', 1, 'stock');
-			const item = {
-				name: name,
-				bp: bp,
-				sp: sp
-			};
-			updateItemById(db, 'stock', id, item);
-		}
-
-		async function deleteProduct(id) {
-			const db = await openDatabase('matrixStockApp', 1, 'stock');
-			deleteItem(db, 'stock', id);
-
-			populate();
-		}
-
 		async function populate() {
-			var tbody = '<tbody><tr><th style="width:50%">Item Name</th><th>Buying Price</th><th>Selling Price</th><th></th></tr>';
+			stockDate =  new Date($("#stockDate").val()).toISOString().split('T')[0];
+
+			var tbody = '<tbody><tr><th>Item</th><th>Sold</th><th>@</th><th>Buying Cost</th><th>Total Sales</th><th>Profit</th></tr>';
+				totalProfit = 0;
+
 			try {
 				const db = await openDatabase('matrixStockApp', 1, 'stock');
 
 				const allItems = await getAllItems(db, 'stock');
 
 				allItems.forEach(item => {
-					row = '<tr>'
-						+ '<td><input type="text" id="nam_' + item.id + '" value="' + item.name + '" onkeyup="updateProduct(' + item.id + ')" /></td>'
-						+ '<td><input type="number" id="bp_' + item.id + '" value="' + item.bp + '" onkeyup="updateProduct(' + item.id + ')" /></td>'
-						+ '<td><input type="number" id="sp_' + item.id + '" value="' + item.sp + '" onkeyup="updateProduct(' + item.id + ')" /></td>'
-						+ '<td><a href="#" class="icon solid fa-trash" onclick="deleteProduct(' + item.id + ')"></a></td>'
-						+ '</tr>';
-					tbody += row;
+					const currentDate = new Date($("#stockDate").val());
+					currentDate.setDate(currentDate.getDate() + 1);
+					const tomorrowDate = currentDate.toISOString().split('T')[0];
+
+					const todayStock = item[stockDate];
+					const tomorrowStock = item[tomorrowDate];
+					const opening = todayStock ? todayStock.opening + todayStock.additions : 0;
+					const closing = tomorrowStock ? tomorrowStock.opening : 0;
+					const sold = opening - closing;
+
+					if (sold !== 0) {
+						profit = sold * (item.sp - item.bp);
+						totalProfit += profit;
+
+						row = '<tr style="background-color: ' + (profit < 0 ? 'red' : '') + '">'
+							+ '<td><b>' + item.name + '</b></td>'
+							+ '<td>' + sold.toLocaleString() + '</td>'
+							+ '<td>' + item.sp.toLocaleString() + '</td>'
+							+ '<td>' + (item.bp * sold).toLocaleString() + '</td>'
+							+ '<td>' + (item.sp * sold).toLocaleString() + '</td>'
+							+ '<td><b>' + profit.toLocaleString() + '</b></td>'
+							+ '</tr>';
+						tbody += row;
+					}
 				});
 
 
@@ -148,7 +139,7 @@
 				console.error('Error:', error);
 			}
 
-			tbody += '</tbody>'
+			tbody += '<tr><th colspan="5">Total Profit/Loss<th>' + totalProfit.toLocaleString() + '</th></tr></tbody>'
 
 			$('#table').html(tbody);
 
